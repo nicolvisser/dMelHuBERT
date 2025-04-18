@@ -62,7 +62,7 @@ class DMelHuBERT(nn.Module):
 
     def mask(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         mask = None
-        if self.training and self._mask:
+        if self._mask:
             mask = _compute_mask(x.size(0), 0.8, 10, x.device, 2)
             x[mask] = self.masked_spec_embed.to(x.dtype)
         return x, mask

@@ -4,20 +4,17 @@ from pathlib import Path
 
 import lightning.pytorch as pl
 import torch
-import wandb
 from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
 from torch.utils.data import DataLoader
 
+import wandb
 from dmelhubert.dataset import DMelWithLabelsDataset, collate_fn
-from dmelhubert.model import DMelHuBERT
 from dmelhubert.scheduler import LinearRampCosineDecayScheduler
 from dmelhubert.trainer import MelHuBERTIteration1
 
 
 @dataclass
 class TrainArgs:
-    """Training arguments for the transformer model."""
-
     project_name: str
     run_name: str
     train_waveforms_dir: str
@@ -120,44 +117,29 @@ def train(train_config_path: str) -> None:
 
     checkpoint_dir = Path("./checkpoints") / train_args.run_name
     train_args_path = checkpoint_dir / "train_args.json"
-    lighting_best_checkpoint_path = checkpoint_dir / "best.ckpt"
-    torch_best_checkpoint_path = checkpoint_dir / "best.pt"
 
     if checkpoint_dir.exists():
-        msg = f"Warning: Checkpoint directory {checkpoint_dir} already exists. Continue and overwrite contents? (y/n): "
-        response = input(msg)
-        if response.lower() != "y":
-            print("Training aborted.")
-            exit()
+        msg = (
+            f"Checkpoint directory {checkpoint_dir} already exists. Aborting training."
+        )
+        print(msg)
+        exit()
 
-    class CustomCheckpointCallback(ModelCheckpoint):
-        """Custom checkpoint callback to save model args and vanilla torch checkpoint."""
+    train_args_path.parent.mkdir(parents=True, exist_ok=True)
+    train_args.save_json(train_args_path)
 
-        def on_validation_end(self, trainer, pl_module: MelHuBERTIteration1) -> None:
-            super().on_validation_end(trainer, pl_module)
-            # save the model args and trainer args as json files
-            if not checkpoint_dir.exists():
-                checkpoint_dir.mkdir(parents=True)
-            train_args.save_json(train_args_path, indent=4)
-            # save the vanilla torch model as well
-            model: DMelHuBERT = pl_module.model
-            model.save_pretrained_checkpoint(torch_best_checkpoint_path)
-
-    checkpoint_callback = CustomCheckpointCallback(
+    checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
-        filename=lighting_best_checkpoint_path.stem,
-        monitor="val/loss",
-        verbose=True,
         save_last=True,
-        save_top_k=1,
         save_weights_only=True,
-        mode="min",
+        save_top_k=-1,
+        every_n_train_steps=10_000,
     )
 
     # LOGGER SETUP
 
     logger = pl.loggers.WandbLogger(
-        log_model=False,
+        log_model=True,
         project=train_args.project_name,
         name=train_args.run_name,
     )

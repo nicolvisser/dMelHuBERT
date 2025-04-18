@@ -21,8 +21,8 @@ class MelHuBERTIteration1(L.LightningModule):
         )  # (seqlen, 100)
 
         loss = torch.nn.functional.cross_entropy(
-            input=logits[mask] if mask is not None else logits,
-            target=labels[mask] if mask is not None else labels,
+            input=logits[mask],
+            target=labels[mask],
             reduction="mean",
         )
         return loss
@@ -48,14 +48,6 @@ class MelHuBERTIteration1(L.LightningModule):
         batch: Tuple[torch.Tensor, torch.Tensor, List[int]],
         batch_idx: int,
     ) -> None:
-        # Check if we have an extra dimension and remove it if necessary
-        mfccs, labels, seqlens = batch
-        if mfccs.dim() > 2:  # If there's an extra dimension
-            mfccs = mfccs.squeeze(0)
-            labels = labels.squeeze(0)
-            seqlens = seqlens[0] if isinstance(seqlens[0], list) else seqlens
-            batch = (mfccs, labels, seqlens)
-
         batch_size = len(batch[2])
         loss = self(batch)
         self.log(
