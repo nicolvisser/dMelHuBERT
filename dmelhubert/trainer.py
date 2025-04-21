@@ -4,13 +4,13 @@ from typing import List, Tuple
 import lightning as L
 import torch
 
-from .model import DMelHuBERT
+from .dmelhubert import DMelHuBERT, DMelHuBERTArgs
 
 
-class MelHuBERTIteration1(L.LightningModule):
-    def __init__(self):
+class DMelHuBERTLightningModule(L.LightningModule):
+    def __init__(self, model_args: DMelHuBERTArgs):
         super().__init__()
-        self.model = DMelHuBERT(num_label_embeddings=100, mask=True)
+        self.model = DMelHuBERT(model_args, mask=True)
 
     def forward(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         dmel, labels, seqlens = batch
@@ -18,7 +18,7 @@ class MelHuBERTIteration1(L.LightningModule):
         logits, mask = self.model(
             dmel=dmel,
             seqlens=seqlens,
-        )  # (seqlen, 100)
+        )  # (seqlen, n_label_embeddings)
 
         loss = torch.nn.functional.cross_entropy(
             input=logits[mask],

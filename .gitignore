@@ -3,3 +3,5 @@ __pycache__
 checkpoints
 wandb
 poetry.lock
+output
+dev*.py
