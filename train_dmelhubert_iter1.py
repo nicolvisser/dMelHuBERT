@@ -19,17 +19,17 @@ from dmelhubert.trainer import DMelHuBERTLightningModule
 class TrainArgs:
     project_name: str = "dMelHuBERT"
     run_name: str = "dmelhubert-iter1"
-    train_dmels_dir: str = "/mnt/wsl/data/dmel/LibriSpeech"
+    train_dmels_dir: str = "/workspace/data/dmel/LibriSpeech"
     train_dmels_pattern: str = "train*/**/*.pt"
-    train_labels_dir: str = "/mnt/wsl/data/mfcc-labels/k-100/LibriSpeech/"
+    train_labels_dir: str = "/workspace/data/mfcc-labels/k-100/LibriSpeech/"
     train_labels_pattern: str = "train*/**/*.pt"
-    valid_dmels_dir: str = "/mnt/wsl/data/dmel/LibriSpeech"
+    valid_dmels_dir: str = "/workspace/data/dmel/LibriSpeech"
     valid_dmels_pattern: str = "dev*/**/*.pt"
-    valid_labels_dir: str = "/mnt/wsl/data/mfcc-labels/k-100/LibriSpeech/"
+    valid_labels_dir: str = "/workspace/data/mfcc-labels/k-100/LibriSpeech/"
     valid_labels_pattern: str = "dev*/**/*.pt"
     max_duration: float = 10.0
-    batch_size: int = 16
-    num_workers: int = 32
+    batch_size: int = 96
+    num_workers: int = 23
     lr_init: float = 2e-7
     warmup_steps: int = 5000
     lr_max: float = 2e-4
@@ -47,7 +47,7 @@ class TrainArgs:
     val_check_interval: float = 1000
     save_model_every_n_steps: int = 10000
     check_val_every_n_epoch: int = None
-    log_every_n_steps: int = 1
+    log_every_n_steps: int = 10
     accumulate_grad_batches: int = 1
     gradient_clip_algorithm: str = "norm"
     gradient_clip_val: float = 1.0
@@ -112,6 +112,7 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
     # CHECKPOINT SETUP
 
     checkpoint_dir = Path("./checkpoints") / train_args.run_name
+    model_args_path = checkpoint_dir / "model_args.json"
     train_args_path = checkpoint_dir / "train_args.json"
 
     if checkpoint_dir.exists() and not train_args.force:
@@ -121,6 +122,8 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
         print(msg)
         exit()
 
+    model_args_path.parent.mkdir(parents=True, exist_ok=True)
+    model_args.save_json(model_args_path)
     train_args_path.parent.mkdir(parents=True, exist_ok=True)
     train_args.save_json(train_args_path)
 
@@ -135,7 +138,7 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
     # LOGGER SETUP
 
     logger = pl.loggers.WandbLogger(
-        log_model=True,
+        log_model=False,
         project=train_args.project_name,
         name=train_args.run_name,
     )

@@ -11,7 +11,6 @@ dependencies = [
     "wandb (>=0.19.9,<0.20.0)",
     "torchaudio (>=2.6.0,<3.0.0)",
     "soundfile (>=0.13.1,<0.14.0)",
-    "zerospeech-libriabx2 (>=0.9.8,<0.10.0)",
     "faiss-cpu (>=1.10.0,<2.0.0)",
     "scikit-learn (>=1.6.1,<2.0.0)",
     "argparse-dataclass (>=2.0.0,<3.0.0)",
