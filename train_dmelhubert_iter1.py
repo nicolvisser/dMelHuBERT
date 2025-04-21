@@ -27,7 +27,7 @@ class TrainArgs:
     valid_dmels_pattern: str = "dev*/**/*.pt"
     valid_labels_dir: str = "/workspace/data/mfcc-labels/k-100/LibriSpeech/"
     valid_labels_pattern: str = "dev*/**/*.pt"
-    max_duration: float = 10.0
+    max_duration: float = 12.5
     batch_size: int = 96
     num_workers: int = 23
     lr_init: float = 2e-7
