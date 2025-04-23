@@ -2,7 +2,7 @@ import copy
 import json
 import random
 from dataclasses import dataclass, fields
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -39,6 +39,7 @@ class DMelHuBERTArgs:
     mask_length: int = 10
     min_masks: int = 2
     temperature: float = 0.1
+    targets: Literal["soft", "hard"] = "soft"
 
     @classmethod
     def load_json(cls, path: str) -> "DMelHuBERTArgs":
@@ -82,12 +83,16 @@ class DMelHuBERT(nn.Module):
             ),
             args.n_layers,
         )
-        self.proj = nn.Linear(args.model_dim, args.proj_dim)
+        if self.args.targets == "soft":
+            self.proj = nn.Linear(args.model_dim, args.proj_dim)
+        else:
+            self.proj = nn.Linear(args.model_dim, args.n_label_embeddings)
 
         self.masked_spec_embed = nn.Parameter(
             torch.FloatTensor(args.model_dim).uniform_()
         )
-        self.label_embedding = nn.Embedding(args.n_label_embeddings, args.proj_dim)
+        if self.args.targets == "soft":
+            self.label_embedding = nn.Embedding(args.n_label_embeddings, args.proj_dim)
 
     @property
     def dtype(self) -> torch.dtype:
@@ -175,8 +180,11 @@ class DMelHuBERT(nn.Module):
         x, mask = self.encode_from_dmel(
             dmel, seqlens, layer=None
         )  # (seqlen, model_dim)
-        x = self.proj(x)  # (seqlen, proj_dim)
-        logits = self.logits(x)  # (seqlen, n_label_embeddings)
+        x = self.proj(x)  # (seqlen, proj_dim) or (seqlen, n_label_embeddings)
+        if self.args.targets == "soft":
+            logits = self.logits(x)  # (seqlen, n_label_embeddings)
+        else:
+            logits = x  # (seqlen, n_label_embeddings)
         return logits, mask
 
     def save_pretrained_checkpoint(
