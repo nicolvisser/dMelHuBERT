@@ -143,6 +143,9 @@ class DMelHuBERT(nn.Module):
             output_layer=layer,
         )  # (seqlen, model_dim)
 
+        if layer is not None and layer > self.args.n_layers:
+            x = self.proj(x)
+
         return x, mask
 
     def encode_from_wav(

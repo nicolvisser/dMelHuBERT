@@ -8,7 +8,7 @@ from sklearn.cluster import kmeans_plusplus
 from tqdm import tqdm
 
 
-def main(
+def train_k_means(
     features_dir: str,
     output_dir: str,
     features_pattern: str = "*.pt",
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(
+    train_k_means(
         features_dir=args.features_dir,
         output_dir=args.output_dir,
         features_pattern=args.pattern,

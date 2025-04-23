@@ -8,9 +8,9 @@ from .dmelhubert import DMelHuBERT, DMelHuBERTArgs
 
 
 class DMelHuBERTLightningModule(L.LightningModule):
-    def __init__(self, model_args: DMelHuBERTArgs):
+    def __init__(self, model_args: DMelHuBERTArgs, mask: bool = True):
         super().__init__()
-        self.model = DMelHuBERT(model_args, mask=True)
+        self.model = DMelHuBERT(model_args, mask=mask)
 
     def forward(self, batch: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         dmel, labels, seqlens = batch
@@ -60,14 +60,3 @@ class DMelHuBERTLightningModule(L.LightningModule):
 
     def configure_optimizers(self):
         return None  # optimizers will be configured externally
-
-    @classmethod
-    def from_model_dir(
-        cls,
-        model_dir: str,
-        checkpoint_filename: str = "best.ckpt",
-    ):
-        model_dir = Path(model_dir)
-        checkpoint_path: Path = model_dir / checkpoint_filename
-        assert checkpoint_path.exists(), checkpoint_path
-        return cls.load_from_checkpoint(checkpoint_path=checkpoint_path)
