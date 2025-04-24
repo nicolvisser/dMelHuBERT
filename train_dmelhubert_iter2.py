@@ -218,7 +218,7 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
 
 
 if __name__ == "__main__":
-    model_args = DMelHuBERTArgs(n_label_embeddings=500)
+    model_args = DMelHuBERTArgs()
     train_args = ArgumentParser(TrainArgs).parse_args()
 
     train(model_args, train_args)

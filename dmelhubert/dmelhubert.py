@@ -185,7 +185,7 @@ class DMelHuBERT(nn.Module):
             logits = self.logits(x)  # (seqlen, n_label_embeddings)
         else:
             logits = x  # (seqlen, n_label_embeddings)
-        return logits, mask
+        return logits.float(), mask
 
     def save_pretrained_checkpoint(
         self,
