@@ -81,13 +81,13 @@ def extract_features_labels(
 
 if __name__ == "__main__":
     extract_features_labels(
-        checkpoint_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter1/epoch=34-step=100000.ckpt",
-        model_args_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter1/model_args.json",
-        layer=9,
-        centroids_path=f"/mnt/wsl/nvme/code/dMelHuBERT/output/kmeans-iter-1-layer-9/centroids-k-500.pt",
+        checkpoint_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/epoch=34-step=100000.ckpt",
+        model_args_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/model_args.json",
+        layer=13,
+        centroids_path=f"/mnt/wsl/nvme/code/dMelHuBERT/output/kmeans-iter-2-layer-13-k-500/centroids-k-500.pt",
         waveforms_dir="/mnt/wsl/nvme/datasets/LibriSpeech",
         waveforms_pattern="**/*.flac",
-        labels_dir=f"/mnt/wsl/data/dmelhubert-features-labels/iter-1/layer-9/k-500/LibriSpeech",
+        labels_dir=f"/mnt/wsl/data/dmelhubert-features-labels/iter-2/layer-13/k-500/LibriSpeech",
         batch_size=32,
         num_workers=32,
         dtype=torch.uint16,

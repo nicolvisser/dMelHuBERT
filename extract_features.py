@@ -73,14 +73,14 @@ def extract_features(
 
 
 if __name__ == "__main__":
-    layer = 9
+    layer = 13
     extract_features(
-        checkpoint_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter1/epoch=34-step=100000.ckpt",
-        model_args_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter1/model_args.json",
+        checkpoint_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/epoch=34-step=100000.ckpt",
+        model_args_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/model_args.json",
         layer=layer,
         waveforms_dir="/mnt/wsl/nvme/datasets/LibriSpeech",
         waveforms_pattern="train-clean-100/**/*.flac",
-        features_dir=f"/mnt/wsl/nvme/code/dMelHuBERT/output/iter1-features/layer-{layer}",
+        features_dir=f"/mnt/wsl/nvme/code/dMelHuBERT/output/iter2-features/layer-{layer}",
         batch_size=32,
         num_workers=32,
     )
