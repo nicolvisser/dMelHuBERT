@@ -17,24 +17,28 @@ from dmelhubert.trainer import DMelHuBERTLightningModule
 
 @dataclass
 class TrainArgs:
+    # fmt: off
     project_name: str = "dMelHuBERT"
-    run_name: str = "dmelhubert-iter3"
-    train_dmels_dir: str = "/workspace/data/dmel/LibriSpeech"
+    run_name: str = "dmelhubert-iter3-warm-start-ft-iter-3-layer-13-k-100"
+    warm_start_model_args_path: str = "checkpoints/dmelhubert-iter3/model_args.json"
+    warm_start_checkpoint_path: str = "checkpoints/dmelhubert-iter3/epoch=34-step=100000.ckpt"
+    n_label_embeddings: int = 100
+    train_dmels_dir: str = "/mnt/wsl/data/dmel/LibriSpeech"
     train_dmels_pattern: str = "train*/**/*.pt"
-    train_labels_dir: str = "/workspace/data/dmelhubert-features-labels/iter-2/layer-13/k-500/LibriSpeech/"
+    train_labels_dir: str = "/mnt/wsl/data/dmelhubert-labels/iter-3/step-100000/layer-13/k-100/LibriSpeech"
     train_labels_pattern: str = "train*/**/*.pt"
-    valid_dmels_dir: str = "/workspace/data/dmel/LibriSpeech"
+    valid_dmels_dir: str = "/mnt/wsl/data/dmel/LibriSpeech"
     valid_dmels_pattern: str = "dev*/**/*.pt"
-    valid_labels_dir: str = "/workspace/data/dmelhubert-features-labels/iter-2/layer-13/k-500/LibriSpeech/"
+    valid_labels_dir: str = "/mnt/wsl/data/dmelhubert-labels/iter-3/step-100000/layer-13/k-100/LibriSpeech"
     valid_labels_pattern: str = "dev*/**/*.pt"
     max_duration: float = 12.5
-    batch_size: int = 48 # TODO: Set according to instance
+    batch_size: int = 1 # TODO: Set according to instance
     num_workers: int = 23 # TODO: Set according to instance
     lr_init: float = 2e-7
-    warmup_steps: int = 5_000
-    lr_max: float = 2e-4
-    decay_steps: int = 95_000
-    lr_final: float = 0.0
+    warmup_steps: int = 2_000
+    lr_max: float = 2e-5
+    decay_steps: int = 23_000
+    lr_final: float = 2e-6
     betas: tuple[float, float] = (0.9, 0.98)
     weight_decay: float = 0.01
     eps: float = 1e-8
@@ -43,15 +47,16 @@ class TrainArgs:
     devices: int = 1
     precision: str = "bf16-mixed"
     fast_dev_run: bool = False
-    max_steps: int = 100_000
-    val_check_interval: float = 1000
-    save_model_every_n_steps: int = 10000
+    max_steps: int = 25_000
+    val_check_interval: float = 1_000
+    save_model_every_n_steps: int = 5_000
     check_val_every_n_epoch: int = None
     log_every_n_steps: int = 10
-    accumulate_grad_batches: int = 2
+    accumulate_grad_batches: int = 1
     gradient_clip_algorithm: str = "norm"
     gradient_clip_val: float = 1.0
     force: bool = False
+    # fmt: on
 
     @classmethod
     def load_json(cls, path: str) -> "TrainArgs":
@@ -66,8 +71,8 @@ class TrainArgs:
             json.dump(self.to_dict(), f, indent=indent)
 
 
-def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
-    """Train the MelHuBERT model.
+def train(train_args: TrainArgs) -> None:
+    """Train the MelHuBERT model with warm start.
 
     Args:
         train_config_path: Path to the training configuration file
@@ -109,10 +114,19 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
         drop_last=False,
     )
 
+    # LOAD WARM START MODEL ARGS
+
+    warm_start_model_args = DMelHuBERTArgs.load_json(
+        train_args.warm_start_model_args_path
+    )
+
+    # override n_label_embeddings
+    warm_start_model_args.n_label_embeddings = train_args.n_label_embeddings
+
     # CHECKPOINT SETUP
 
     checkpoint_dir = Path("./checkpoints") / train_args.run_name
-    model_args_path = checkpoint_dir / "model_args.json"
+    new_model_args_path = checkpoint_dir / "model_args.json"
     train_args_path = checkpoint_dir / "train_args.json"
 
     if checkpoint_dir.exists() and not train_args.force:
@@ -122,8 +136,8 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
         print(msg)
         exit()
 
-    model_args_path.parent.mkdir(parents=True, exist_ok=True)
-    model_args.save_json(model_args_path)
+    new_model_args_path.parent.mkdir(parents=True, exist_ok=True)
+    warm_start_model_args.save_json(new_model_args_path)
     train_args_path.parent.mkdir(parents=True, exist_ok=True)
     train_args.save_json(train_args_path)
 
@@ -156,7 +170,18 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
 
     # MODEL SETUP
 
-    model = DMelHuBERTLightningModule(model_args)
+    model = DMelHuBERTLightningModule(warm_start_model_args)
+
+    checkpoint = torch.load(train_args.warm_start_checkpoint_path, map_location="cpu")
+    state_dict = checkpoint["state_dict"]
+
+    del state_dict["model.proj.weight"]
+    del state_dict["model.proj.bias"]
+    del state_dict["model.label_embedding.weight"]
+
+    model.load_state_dict(state_dict, strict=False)
+
+    # OPTIMIZER SETUP
 
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -218,7 +243,6 @@ def train(model_args: DMelHuBERTArgs, train_args: TrainArgs) -> None:
 
 
 if __name__ == "__main__":
-    model_args = DMelHuBERTArgs()
     train_args = ArgumentParser(TrainArgs).parse_args()
 
-    train(model_args, train_args)
+    train(train_args)

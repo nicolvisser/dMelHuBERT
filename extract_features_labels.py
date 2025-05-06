@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -8,6 +9,29 @@ from tqdm import tqdm
 from dmelhubert.datasets import Wav2DMelDataset
 from dmelhubert.dmelhubert import DMelHuBERT, DMelHuBERTArgs
 from dmelhubert.trainer import DMelHuBERTLightningModule
+
+torch_dtypes = [
+    torch.int8,
+    torch.int16,
+    torch.int32,
+    torch.int64,
+    torch.uint8,
+    torch.uint16,
+    torch.uint32,
+    torch.uint64,
+    torch.long,
+]
+np_dtypes = [
+    np.int8,
+    np.int16,
+    np.int32,
+    np.int64,
+    np.uint8,
+    np.uint16,
+    np.uint32,
+    np.uint64,
+    np.long,
+]
 
 
 def collate_fn(
@@ -28,7 +52,7 @@ def extract_features_labels(
     labels_dir: str,
     batch_size: int = 1,
     num_workers: int = 1,
-    dtype: torch.dtype = torch.int64,
+    dtype: Union[torch.dtype, np.dtype] = torch.int64,
 ):
     waveforms_dir = Path(waveforms_dir)
     labels_dir = Path(labels_dir)
@@ -69,26 +93,18 @@ def extract_features_labels(
             assert mask is None
 
         dists = torch.cdist(features, centroids)
-        labels = torch.argmin(dists, dim=-1).to(dtype=dtype)
+        labels = torch.argmin(dists, dim=-1)
         i = 0
         for relative_path, seqlen in zip(relative_paths, seqlens):
             lab = labels[i : i + seqlen]
             i += seqlen
-            output_path: Path = (Path(labels_dir) / relative_path).with_suffix(".pt")
+            output_path: Path = Path(labels_dir) / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            torch.save(lab.cpu(), output_path)
-
-
-if __name__ == "__main__":
-    extract_features_labels(
-        checkpoint_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/epoch=34-step=100000.ckpt",
-        model_args_path="/mnt/wsl/nvme/code/dMelHuBERT/checkpoints/dmelhubert-iter2/model_args.json",
-        layer=13,
-        centroids_path=f"/mnt/wsl/nvme/code/dMelHuBERT/output/kmeans-iter-2-layer-13-k-500/centroids-k-500.pt",
-        waveforms_dir="/mnt/wsl/nvme/datasets/LibriSpeech",
-        waveforms_pattern="**/*.flac",
-        labels_dir=f"/mnt/wsl/data/dmelhubert-features-labels/iter-2/layer-13/k-500/LibriSpeech",
-        batch_size=32,
-        num_workers=32,
-        dtype=torch.uint16,
-    )
+            if dtype in torch_dtypes:
+                lab = lab.cpu().to(dtype=dtype)
+                torch.save(lab, output_path.with_suffix(".pt"))
+            elif dtype in np_dtypes:
+                lab = lab.cpu().numpy().astype(dtype)
+                np.save(output_path.with_suffix(".npy"), lab)
+            else:
+                raise ValueError(f"Unsupported dtype: {dtype}")

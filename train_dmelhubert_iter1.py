@@ -28,8 +28,8 @@ class TrainArgs:
     valid_labels_dir: str = "/workspace/data/mfcc-labels/k-100/LibriSpeech/"
     valid_labels_pattern: str = "dev*/**/*.pt"
     max_duration: float = 12.5
-    batch_size: int = 96
-    num_workers: int = 23
+    batch_size: int = 96 # TODO: Set according to instance
+    num_workers: int = 23 # TODO: Set according to instance
     lr_init: float = 2e-7
     warmup_steps: int = 5000
     lr_max: float = 2e-4

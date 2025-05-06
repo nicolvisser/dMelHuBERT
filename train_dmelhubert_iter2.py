@@ -18,7 +18,7 @@ from dmelhubert.trainer import DMelHuBERTLightningModule
 @dataclass
 class TrainArgs:
     project_name: str = "dMelHuBERT"
-    run_name: str = "dmelhubert-iter1"
+    run_name: str = "dmelhubert-iter2"
     train_dmels_dir: str = "/workspace/data/dmel/LibriSpeech"
     train_dmels_pattern: str = "train*/**/*.pt"
     train_labels_dir: str = "/workspace/data/dmelhubert-features-labels/iter-1/layer-9/k-500/LibriSpeech/"
