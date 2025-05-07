@@ -5,3 +5,4 @@ wandb
 poetry.lock
 output
 dev*.py
+*_local.py
