@@ -48,5 +48,8 @@ def extract_dmels(args: ExtractDMelsArgs):
 
 
 if __name__ == "__main__":
-    args = ArgumentParser(ExtractDMelsArgs).parse_args()
+    parser = ArgumentParser(ExtractDMelsArgs)
+    parser.description = "Extract dMel encodings from a directory of waveforms"
+    parser.epilog = "See the implementation of extract_dmels.py for more details"
+    args = parser.parse_args()
     extract_dmels(args)
