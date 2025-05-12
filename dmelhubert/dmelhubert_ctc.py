@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass, fields
 from typing import List, Tuple
 
+import loralib
 import torch
 import torch.nn as nn
 from xformers.ops.fmha.attn_bias import BlockDiagonalMask
@@ -127,3 +128,57 @@ class DMelHuBERTCTC(nn.Module):
     ):
         state_dict = self.state_dict()
         torch.save(state_dict, checkpoint_path)
+
+
+class DMelHuBERTCTCWithLora(DMelHuBERTCTC):
+    def __init__(
+        self,
+        args: DMelHuBERTCTCArgs,
+        r: int = 4,
+        alpha: float = 16.0,
+        dropout: float = 0.05,
+        add_to_query: bool = True,
+        add_to_key: bool = False,
+        add_to_value: bool = True,
+        add_to_output: bool = False,
+    ):
+        super().__init__(args)
+
+        for layer in self.encoder.layers:
+            layer: TransformerBlock = layer
+            if add_to_query:
+                layer.attention.wq = loralib.Linear(
+                    layer.attention.wq.in_features,
+                    layer.attention.wq.out_features,
+                    r=r,
+                    lora_alpha=alpha,
+                    lora_dropout=dropout,
+                    bias=False,
+                )
+            if add_to_key:
+                layer.attention.wk = loralib.Linear(
+                    layer.attention.wk.in_features,
+                    layer.attention.wk.out_features,
+                    r=r,
+                    lora_alpha=alpha,
+                    lora_dropout=dropout,
+                    bias=False,
+                )
+            if add_to_value:
+                layer.attention.wv = loralib.Linear(
+                    layer.attention.wv.in_features,
+                    layer.attention.wv.out_features,
+                    r=r,
+                    lora_alpha=alpha,
+                    lora_dropout=dropout,
+                    bias=False,
+                )
+            if add_to_output:
+                layer.attention.wo = loralib.Linear(
+                    layer.attention.wo.in_features,
+                    layer.attention.wo.out_features,
+                    r=r,
+                    lora_alpha=alpha,
+                    lora_dropout=dropout,
+                    bias=False,
+                )

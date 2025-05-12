@@ -16,6 +16,8 @@ dependencies = [
     "argparse-dataclass (>=2.0.0,<3.0.0)",
     "pandas (>=2.2.3,<3.0.0)",
     "seaborn (>=0.13.2,<0.14.0)",
+    "loralib (>=0.1.2,<0.2.0)",
+    "tokenizers (>=0.21.1,<0.22.0)",
 ]
 
 

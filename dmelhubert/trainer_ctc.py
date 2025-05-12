@@ -1,18 +1,46 @@
-from pathlib import Path
-from typing import List, Tuple, Dict, Any
 import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import lightning as L
 import torch
 
-from .dmelhubert_ctc import DMelHuBERTCTC, DMelHuBERTCTCArgs
+from .dmelhubert_ctc import DMelHuBERTCTC, DMelHuBERTCTCArgs, DMelHuBERTCTCWithLora
 
 
 class DMelHuBERTCTCLightningModule(L.LightningModule):
-    def __init__(self, model_args: DMelHuBERTCTCArgs):
+    def __init__(
+        self,
+        model_args: DMelHuBERTCTCArgs,
+        use_lora: bool = False,
+        r: Optional[int] = None,
+        alpha: Optional[float] = None,
+        dropout: Optional[float] = None,
+        add_to_query: Optional[bool] = None,
+        add_to_key: Optional[bool] = None,
+        add_to_value: Optional[bool] = None,
+        add_to_output: Optional[bool] = None,
+        label_smoothing: float = 0.0,
+    ):
         super().__init__()
         self.model_args = model_args
-        self.model = DMelHuBERTCTC(model_args)
+        self.label_smoothing = label_smoothing
+
+        self.model: Union[DMelHuBERTCTC, DMelHuBERTCTCWithLora] = None
+        if use_lora:
+            self.model = DMelHuBERTCTCWithLora(
+                model_args,
+                r=r,
+                alpha=alpha,
+                dropout=dropout,
+                add_to_query=add_to_query,
+                add_to_key=add_to_key,
+                add_to_value=add_to_value,
+                add_to_output=add_to_output,
+            )
+        else:
+            self.model = DMelHuBERTCTC(model_args)
+
         # Load character mappings
         try:
             with open("checkpoints/ctc-char-mappings.json", "r") as f:
@@ -44,7 +72,13 @@ class DMelHuBERTCTCLightningModule(L.LightningModule):
             batched_logits[:l, i] = logits[offset : offset + l]
             offset += l
 
-        log_probs = torch.nn.functional.log_softmax(batched_logits, dim=2)
+        if self.label_smoothing > 0:
+            smooth_factor = self.label_smoothing / (vocab_size - 1)
+            probs = torch.nn.functional.softmax(batched_logits, dim=2)
+            smooth_probs = (1.0 - self.label_smoothing) * probs + smooth_factor
+            log_probs = torch.log(smooth_probs)
+        else:
+            log_probs = torch.nn.functional.log_softmax(batched_logits, dim=2)
 
         loss = torch.nn.functional.ctc_loss(
             log_probs=log_probs,  # (max_seqlen, batch_size, vocab_size)
@@ -111,7 +145,7 @@ class DMelHuBERTCTCLightningModule(L.LightningModule):
                 target_start = sum(tgtlens[:i].tolist()) if i > 0 else 0
                 target_end = target_start + tgtlens[i].item()
                 sample_target = targets[target_start:target_end].tolist()
-                target_text = self._indices_to_text(sample_target)
+                target_text = self._ctc_decode(sample_target, blank_idx)
 
                 print(f"Sample {i+1}:")
                 print(f"Prediction: {decoded_text}")
@@ -119,15 +153,16 @@ class DMelHuBERTCTCLightningModule(L.LightningModule):
                 print("\n")
 
     def _ctc_decode(self, pred_indices, blank_idx):
-        """Simple CTC decoding: collapse repeated tokens and remove blanks"""
-        result = []
-        prev_idx = -1
-
-        for idx in pred_indices:
-            if idx != blank_idx and idx != prev_idx:
+        # collapse repeated tokens
+        result = [pred_indices[0]]
+        for idx in pred_indices[1:]:
+            if idx != result[-1]:
                 result.append(idx)
-            prev_idx = idx
 
+        # remove blanks
+        result = [i for i in result if i != blank_idx]
+
+        # convert to text
         return self._indices_to_text(result)
 
     def _indices_to_text(self, indices):
